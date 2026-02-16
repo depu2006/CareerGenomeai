@@ -28,8 +28,8 @@ mongoose.connect(MONGO_URI)
 app.use("/api/auth", require("./routes/auth"));
 app.use("/api/projects", require("./routes/projectGenerator"));
 app.use("/api/skill-gap", require("./routes/skillGapClosure"));
+const PORT = process.env.PORT || 8000;
 
-const PORT = 8000;
 
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
