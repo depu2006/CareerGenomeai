@@ -85,7 +85,7 @@ const Dashboard = () => {
                             initial={{ opacity: 0, scale: 0.9, y: -10, x: -10 }}
                             animate={{ opacity: 1, scale: 1, y: 0, x: 0 }}
                             exit={{ opacity: 0, scale: 0.9, y: -10 }}
-                            className="absolute top-14 left-0 w-[500px] max-h-[80vh] overflow-y-auto bg-white/95 backdrop-blur-xl border border-border/50 shadow-2xl rounded-2xl p-4 z-50 no-scrollbar"
+                            className="absolute top-14 left-0 md:left-auto md:right-0 w-[calc(100vw-2rem)] md:w-[500px] max-h-[80vh] overflow-y-auto bg-white/95 backdrop-blur-xl border border-border/50 shadow-2xl rounded-2xl p-4 z-50 no-scrollbar"
                         >
                             <div className="flex justify-between items-center mb-4">
                                 <h3 className="font-bold text-lg">Market Insights</h3>

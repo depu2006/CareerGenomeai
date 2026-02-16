@@ -99,22 +99,22 @@ const Landing = () => {
                 </motion.div>
 
                 {/* Hero Visual */}
-                <div className="relative h-[600px] w-full hidden lg:block">
-                    <div className="absolute inset-0 bg-gradient-to-tr from-cyan-500/10 to-purple-500/10 rounded-full blur-[100px]" />
+                <div className="relative h-[400px] md:h-[600px] w-full block">
+                    <div className="absolute inset-0 bg-gradient-to-tr from-cyan-500/10 to-purple-500/10 rounded-full blur-[80px] md:blur-[100px]" />
 
                     {/* Floating Cards Mockup */}
                     <motion.div
                         initial={{ y: 20, opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
                         transition={{ delay: 0.4, duration: 0.8 }}
-                        className="absolute top-10 left-10 z-20"
+                        className="absolute top-0 left-0 md:top-10 md:left-10 z-20 scale-75 md:scale-100"
                     >
-                        <div className="p-4 rounded-2xl bg-card border border-border shadow-2xl flex items-center gap-3 w-64 backdrop-blur-xl">
-                            <div className="h-10 w-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
-                                <Target className="text-blue-400" />
+                        <div className="p-4 rounded-2xl bg-card border border-border shadow-2xl flex items-center gap-3 w-56 md:w-64 backdrop-blur-xl">
+                            <div className="h-10 w-10 bg-blue-500/20 rounded-lg flex items-center justify-center text-blue-400">
+                                <Target size={20} />
                             </div>
                             <div>
-                                <div className="text-2xl font-bold">92%</div>
+                                <div className="text-xl md:text-2xl font-bold">92%</div>
                                 <div className="text-xs text-muted-foreground">Career Match</div>
                             </div>
                         </div>
@@ -124,14 +124,14 @@ const Landing = () => {
                         initial={{ y: 40, opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
                         transition={{ delay: 0.6, duration: 0.8 }}
-                        className="absolute bottom-40 left-0 z-30"
+                        className="absolute bottom-10 left-0 md:bottom-40 z-30 scale-75 md:scale-100"
                     >
-                        <div className="p-4 rounded-2xl bg-card border border-border shadow-2xl flex items-center gap-3 w-56 backdrop-blur-xl">
-                            <div className="h-10 w-10 bg-cyan-500/20 rounded-lg flex items-center justify-center">
-                                <Briefcase className="text-cyan-400" />
+                        <div className="p-4 rounded-2xl bg-card border border-border shadow-2xl flex items-center gap-3 w-48 md:w-56 backdrop-blur-xl">
+                            <div className="h-10 w-10 bg-cyan-500/20 rounded-lg flex items-center justify-center text-cyan-400">
+                                <Briefcase size={20} />
                             </div>
                             <div>
-                                <div className="text-2xl font-bold">340+</div>
+                                <div className="text-xl md:text-2xl font-bold">340+</div>
                                 <div className="text-xs text-muted-foreground">Opportunities</div>
                             </div>
                         </div>
@@ -141,11 +141,11 @@ const Landing = () => {
                         initial={{ x: 50, opacity: 0 }}
                         animate={{ x: 0, opacity: 1 }}
                         transition={{ delay: 0.8, duration: 1 }}
-                        className="absolute right-0 top-1/2 -translate-y-1/2 z-10"
+                        className="absolute right-0 top-1/2 -translate-y-1/2 z-10 scale-75 md:scale-100"
                     >
-                        <div className="p-4 rounded-2xl bg-card border border-border shadow-2xl flex items-center gap-3 w-48 backdrop-blur-xl bg-opacity-80">
-                            <div className="h-10 w-10 bg-purple-500/20 rounded-lg flex items-center justify-center">
-                                <Users className="text-purple-400" />
+                        <div className="p-4 rounded-2xl bg-card border border-border shadow-2xl flex items-center gap-3 w-40 md:w-48 backdrop-blur-xl bg-opacity-80">
+                            <div className="h-10 w-10 bg-purple-500/20 rounded-lg flex items-center justify-center text-purple-400">
+                                <Users size={20} />
                             </div>
                             <div>
                                 <div className="text-lg font-bold">1.2k</div>
@@ -155,7 +155,7 @@ const Landing = () => {
                     </motion.div>
 
                     {/* DNA Centered */}
-                    <div className="absolute inset-0 flex items-center justify-center z-0 scale-75 opacity-80">
+                    <div className="absolute inset-0 flex items-center justify-center z-0 scale-50 md:scale-75 opacity-80">
                         <DNAHelix score="" />
                     </div>
                 </div>
