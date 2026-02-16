@@ -1,0 +1,20 @@
+O*NET-SOC Code	Title	Example	Commodity Code	Commodity Title
+15-1132.00	Software Developers, Applications	Python	43232402	Development software
+15-1132.00	Software Developers, Applications	JavaScript	43232402	Development software
+15-1132.00	Software Developers, Applications	React	43232402	Development software
+15-1132.00	Software Developers, Applications	Node.js	43232402	Development software
+15-1132.00	Software Developers, Applications	Docker	43232402	Development software
+15-1132.00	Software Developers, Applications	Git	43232402	Development software
+15-1132.00	Software Developers, Applications	AWS	43232402	Development software
+15-1134.00	Web Developers	HTML	43232402	Development software
+15-1134.00	Web Developers	CSS	43232402	Development software
+15-1134.00	Web Developers	TypeScript	43232402	Development software
+15-1134.00	Web Developers	Vue.js	43232402	Development software
+15-2041.00	Data Scientists	Python	43232402	Development software
+15-2041.00	Data Scientists	Pandas	43232402	Development software
+15-2041.00	Data Scientists	Scikit-learn	43232402	Development software
+15-2041.00	Data Scientists	TensorFlow	43232402	Development software
+15-2041.00	Data Scientists	SQL	43232402	Development software
+15-1251.00	Computer Programmers	C++	43232402	Development software
+15-1251.00	Computer Programmers	Java	43232402	Development software
+15-1251.00	Computer Programmers	Python	43232402	Development software

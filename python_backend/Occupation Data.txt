@@ -1,0 +1,10 @@
+O*NET-SOC Code	Title	Description
+15-1132.00	Software Developers, Applications	Develop, create, and modify general computer applications software or specialized utility programs.
+15-1133.00	Software Developers, Systems Software	Research, design, develop, and test operating systems-level software, compilers, and network distribution software.
+15-1256.00	Software Developers	Research, design, and develop computer and network software or specialized utility programs.
+15-1134.00	Web Developers	Design, create, and modify Web sites. Analyze user needs to implement Web site content, graphics, performance, and capacity.
+15-1251.00	Computer Programmers	Create, modify, and test the code, forms, and script that allow computer applications to run.
+15-1252.00	Software Developers	Research, design, and develop computer and network software or specialized utility programs.
+15-2041.00	Data Scientists	Develop and implement a set of techniques or analytics applications to transform raw data into insights.
+15-1121.00	Computer Systems Analysts	Analyze science, engineering, business, and other data processing problems to implement and improve computer systems.
+15-1151.00	Computer User Support Specialists	Provide technical assistance to computer users. Answer questions or resolve computer problems for clients in person, via telephone, or electronically.

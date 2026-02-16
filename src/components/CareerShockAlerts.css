@@ -1,0 +1,322 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+.csa-container {
+    padding: 40px 20px;
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+    max-width: 1000px;
+    margin: 0 auto;
+    color: #1e293b;
+}
+
+.csa-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 40px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.csa-title {
+    font-size: 2rem;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    letter-spacing: -0.02em;
+}
+
+.csa-controls {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.csa-last-updated {
+    font-size: 0.875rem;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.csa-refresh-btn {
+    background-color: #ffffff;
+    border: 1px solid #cbd5e1;
+    color: #334155;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.csa-refresh-btn:hover {
+    background-color: #f8fafc;
+    border-color: #94a3b8;
+    color: #0f172a;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.csa-dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 24px;
+    margin-top: 20px;
+    align-items: stretch;
+}
+
+.csa-dashboard-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 32px 24px;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: flex-start;
+    height: 100%;
+    min-height: 220px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    position: relative;
+    overflow: hidden;
+}
+
+.csa-dashboard-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    border-color: #cbd5e1;
+}
+
+.csa-card-icon {
+    font-size: 2rem;
+    margin-bottom: 20px;
+    width: 56px;
+    height: 56px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+}
+
+.card-layoff .csa-card-icon {
+    background: linear-gradient(135deg, #ef4444, #b91c1c);
+}
+
+.card-skill .csa-card-icon {
+    background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+}
+
+.card-surge .csa-card-icon {
+    background: linear-gradient(135deg, #10b981, #059669);
+}
+
+.card-trend .csa-card-icon {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+}
+
+.csa-card-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0 0 8px 0;
+}
+
+.csa-card-desc {
+    font-size: 0.95rem;
+    color: #64748b;
+    margin: 0 0 24px 0;
+    line-height: 1.5;
+    flex-grow: 1;
+}
+
+.csa-card-action {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #2563eb;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.csa-dashboard-card:hover .csa-card-action {
+    text-decoration: underline;
+}
+
+/* Feed View Styles */
+.csa-nav-header {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.csa-back-btn {
+    background-color: transparent;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    border: 1px solid #e2e8f0;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 1.2rem;
+}
+
+.csa-back-btn:hover {
+    background-color: #f1f5f9;
+    color: #0f172a;
+    border-color: #cbd5e1;
+}
+
+.csa-view-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0;
+}
+
+.csa-feed {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.csa-news-item {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 24px;
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.csa-news-item:hover {
+    border-color: #cbd5e1;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+}
+
+.csa-news-item::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 5px;
+}
+
+.layoff-shock::before {
+    background-color: #ef4444;
+}
+
+.hiring-surge::before {
+    background-color: #10b981;
+}
+
+.emerging-skill::before {
+    background-color: #8b5cf6;
+}
+
+.hiring-trend::before {
+    background-color: #3b82f6;
+}
+
+.csa-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.csa-badge {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 4px 10px;
+    border-radius: 6px;
+}
+
+.layoff-shock .csa-badge {
+    background-color: #fef2f2;
+    color: #b91c1c;
+}
+
+.hiring-surge .csa-badge {
+    background-color: #ecfdf5;
+    color: #047857;
+}
+
+.emerging-skill .csa-badge {
+    background-color: #f5f3ff;
+    color: #6d28d9;
+}
+
+.hiring-trend .csa-badge {
+    background-color: #eff6ff;
+    color: #1d4ed8;
+}
+
+.csa-date {
+    font-size: 0.875rem;
+    color: #94a3b8;
+    font-weight: 500;
+}
+
+.csa-content {
+    font-size: 1.05rem;
+    line-height: 1.6;
+    color: #334155;
+    font-weight: 500;
+}
+
+.csa-link {
+    color: inherit;
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-bottom-color 0.2s;
+}
+
+.csa-link:hover {
+    color: #0f172a;
+    border-bottom-color: #0f172a;
+}
+
+.csa-loading,
+.csa-error,
+.csa-empty {
+    text-align: center;
+    padding: 60px;
+    color: #64748b;
+    background: #f8fafc;
+    border-radius: 12px;
+    border: 1px dashed #e2e8f0;
+}
+
+@media (max-width: 640px) {
+    .csa-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 16px;
+    }
+
+    .csa-controls {
+        width: 100%;
+        justify-content: space-between;
+    }
+}

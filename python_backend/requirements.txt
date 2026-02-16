@@ -1,0 +1,10 @@
+flask
+flask-cors
+pypdf2
+pandas
+numpy
+requests
+nltk
+pymongo
+pyjwt
+bcrypt
