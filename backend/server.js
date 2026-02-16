@@ -30,6 +30,9 @@ app.use("/api/projects", require("./routes/projectGenerator"));
 app.use("/api/skill-gap", require("./routes/skillGapClosure"));
 const PORT = process.env.PORT || 8000;
 
+app.get("/", (req, res) => {
+    res.send("CareerGenome Backend is Running 🚀");
+});
 
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
