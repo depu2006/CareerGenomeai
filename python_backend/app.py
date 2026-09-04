@@ -24,25 +24,15 @@ MONGO_URI = "mongodb://localhost:27017/"
 DB_NAME = "career_genome"
 SECRET_KEY = "supersecretkey" # Change for production
 
-import threading
-
 try:
-    client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=2000)
-    # verify connection early
-    client.admin.command('ping')
+    client = MongoClient(MONGO_URI)
+    db = client[DB_NAME]
+    users_collection = db["users"]
+    skill_gaps_collection = db["skill_gaps"]
+    interviews_collection = db["interviews"]
     print("MongoDB Connected!")
 except Exception as e:
     print(f"MongoDB Connection Error: {e}")
-    print("Falling back to In-Memory Database (mongomock). Data will NOT persist after restart.")
-    import mongomock
-    client = mongomock.MongoClient()
-
-db = client[DB_NAME]
-users_collection = db["users"]
-skill_gaps_collection = db["skill_gaps"]
-interviews_collection = db["interviews"]
-questions_collection = db["role_questions"]
-smart_questions_collection = db["smart_questions"] # New: for open-ended interview questions
 
 # -----------------------------
 # AUTH & USER ROUTES
@@ -54,9 +44,6 @@ def signup():
     name = data.get('name')
     email = data.get('email')
     password = data.get('password')
-
-    if users_collection is None:
-        return jsonify({"msg": "Database unavailable"}), 503
 
     if not all([name, email, password]):
         return jsonify({"msg": "Missing fields"}), 400
@@ -90,8 +77,6 @@ def login():
     data = request.json
     email = data.get('email')
     password = data.get('password')
-    if users_collection is None:
-        return jsonify({"msg": "Database unavailable"}), 503
 
     user = users_collection.find_one({"email": email})
     if not user:
@@ -139,138 +124,15 @@ def user_profile():
 
 # -----------------------------
 
-# Track roles currently being seeded to avoid duplicate threads
-SEEDING_LOG = {}
-
-def normalize_role(role_raw):
-    """Normalize raw role strings to consistent bank keys."""
-    r = role_raw.lower()
-    if "front" in r: return "frontend"
-    if "back" in r: return "backend"
-    if "data" in r: return "data science"
-    if "ai" in r or "ml" in r: return "ai/ml"
-    if "python" in r: return "python"
-    if "devops" in r: return "devops"
-    return r.strip()
-
-def generate_questions_background(role_key):
-    """Background worker to fill the database with unique AI questions for a role using BATCH generation."""
-    try:
-        if SEEDING_LOG.get(role_key): 
-            return
-        SEEDING_LOG[role_key] = True
-        print(f"--- Turbo Batch Seeding Started for: {role_key} ---")
-        
-        target_count = 100
-        current_count = questions_collection.count_documents({"role": role_key})
-        
-        role_context = {
-            "frontend": "React, JavaScript ES6+, CSS Grid/Flexbox, Redux, Browser APIs, Web Performance",
-            "backend": "Node.js, Express, Python/Django, SQL/NoSQL, REST APIs, Microservices, System Design",
-            "data science": "Pandas, NumPy, Scikit-learn, Statistics, Data Visualization, SQL, Feature Engineering",
-            "ai/ml": "Deep Learning, Transformers, PyTorch/TensorFlow, LLMs, NLP, Computer Vision, Neural Networks"
-        }
-        context_str = role_context.get(role_key, "core technical concepts and industry practices")
-
-        while current_count < target_count:
-            try:
-                # Request 5 questions at once for speed
-                prompt = f"""
-                Generate exactly 5 unique, high-quality multiple-choice technical interview questions for a professional '{role_key}' role.
-                Focus area: {context_str}.
-                
-                The output must be strictly a JSON list of 5 objects:
-                [
-                  {{
-                    "question": "Question text",
-                    "answer": "Correct answer",
-                    "options": ["A", "B", "C", "D"]
-                  }},
-                  ...
-                ]
-                No preamble, no JSON tags. Just the raw JSON list.
-                """
-                
-                payload = {
-                    "model": "phi",
-                    "prompt": prompt,
-                    "stream": False,
-                    "format": "json",
-                    "options": {"temperature": 0.8, "num_predict": 1200}
-                }
-                
-                resp = requests.post("http://localhost:11434/api/generate", json=payload, timeout=40)
-                if resp.status_code == 200:
-                    import json
-                    ai_text = resp.json().get("response", "")
-                    start = ai_text.find("[")
-                    end = ai_text.rfind("]") + 1
-                    if start != -1 and end != -1:
-                        q_list = json.loads(ai_text[start:end])
-                        if isinstance(q_list, list):
-                            for q_obj in q_list:
-                                if all(k in q_obj for k in ["question", "answer", "options"]):
-                                    if not questions_collection.find_one({"role": role_key, "question": q_obj["question"]}):
-                                        q_obj["role"] = role_key
-                                        q_obj["date"] = datetime.datetime.utcnow()
-                                        questions_collection.insert_one(q_obj)
-                                        current_count += 1
-                            print(f"--- Role '{role_key}' Progress: {current_count}/{target_count} ---")
-            except Exception as e:
-                print(f"Seeding error for {role_key}: {e}")
-                break 
-                
-        print(f"--- Turbo Batch Seeding Finished for: {role_key} (Total: {current_count}) ---")
-        SEEDING_LOG[role_key] = False
-    except Exception as e:
-        print(f"Critical seeder failure: {e}")
-        SEEDING_LOG[role_key] = False
-
 # -----------------------------
 # SKILL INTEGRITY CHECK (Quiz)
 # -----------------------------
-# -----------------------------
-# ROLE-BASED MCQ BANK (Curated for Speed & Accuracy)
-# -----------------------------
-ROLE_MCQ_BANK = {
-    "frontend": [
-        {"question": "What is the primary benefit of the Virtual DOM in React?", "options": ["It directly updates the browser DOM for speed", "It minimizes expensive browser DOM manipulations by diffing a copy", "It replaces the need for CSS", "It handles server-side databases"], "answer": "It minimizes expensive browser DOM manipulations by diffing a copy"},
-        {"question": "In CSS, what is the 'Box Model' composed of?", "options": ["Margin, Border, Padding, Content", "Header, Footer, Main, Aside", "Color, Font, Size, Weight", "Select, Input, Button, Label"], "answer": "Margin, Border, Padding, Content"},
-        {"question": "Which hook is used to handle side effects in functional React components?", "options": ["useState", "useContext", "useEffect", "useReducer"], "answer": "useEffect"},
-        {"question": "What does the 'asynchronous' nature of JavaScript mean?", "options": ["Code executes line by line and waits for completion", "Multiple blocks of code can run at the exact same time on one thread", "The engine can start long-running tasks and continue executing other code while waiting", "It only works on multi-core processors"], "answer": "The engine can start long-running tasks and continue executing other code while waiting"},
-        {"question": "What is 'Closure' in JavaScript?", "options": ["A function combined with its lexical environment", "A way to close the browser window", "A private class method", "The end of a loop"], "answer": "A function combined with its lexical environment"},
-        {"question": "Which React prop is used to pass data to child components?", "options": ["state", "props", "ref", "context"], "answer": "props"},
-        {"question": "What does 'z-index' control in CSS?", "options": ["Horizontal position", "Vertical position", "Stack order of overlapping elements", "Opacity level"], "answer": "Stack order of overlapping elements"},
-        {"question": "What is the purpose of 'key' prop in React lists?", "options": ["To style the elements", "To uniquely identify items for efficient domestic re-rendering", "To sort the list automatically", "To encrypt the data"], "answer": "To uniquely identify items for efficient domestic re-rendering"}
-    ],
-    "backend": [
-        {"question": "What is the primary purpose of a 'Middleware' in Express.js?", "options": ["To store large binary files", "To act as a database", "To execute functions between the request and response cycle", "To create CSS layouts"], "answer": "To execute functions between the request and response cycle"},
-        {"question": "Which HTTP status code represents a 'Not Found' error?", "options": ["200", "400", "404", "500"], "answer": "404"},
-        {"question": "What is the difference between SQL and NoSQL databases?", "options": ["SQL is faster, NoSQL is more secure", "SQL uses tables/schemas, NoSQL is often document/key-value based", "SQL is for web, NoSQL is for mobile", "There is no difference"], "answer": "SQL uses tables/schemas, NoSQL is often document/key-value based"},
-        {"question": "What is 'REST' in the context of APIs?", "options": ["A data encryption standard", "An architectural style for network-based applications", "A programming language for servers", "A database management system"], "answer": "An architectural style for network-based applications"},
-        {"question": "What does 'JWT' stand for in authentication?", "options": ["Java Web Token", "JSON Web Token", "Joint Web Team", "Just With Text"], "answer": "JSON Web Token"},
-        {"question": "In Node.js, what is the 'Event Loop'?", "options": ["A loop that handles UI clicks", "A mechanism that allows Node.js to perform non-blocking I/O operations", "A way to iterate over database results", "A security feature for preventing loops"], "answer": "A mechanism that allows Node.js to perform non-blocking I/O operations"}
-    ],
-    "data science": [
-        {"question": "In Python, which library is primarily used for data manipulation and analysis using DataFrames?", "options": ["NumPy", "Pandas", "Matplotlib", "Scikit-learn"], "answer": "Pandas"},
-        {"question": "What is 'Overfitting' in Machine Learning?", "options": ["When a model performs well on training data but poorly on unseen data", "When a model is too simple to capture patterns", "When the training data is too small", "When the model takes too long to train"], "answer": "When a model performs well on training data but poorly on unseen data"},
-        {"question": "What does 'Correlation' measure between two variables?", "options": ["The cause and effect relationship", "The linear relationship strength and direction", "The average value of both", "The total sum of variables"], "answer": "The linear relationship strength and direction"},
-        {"question": "Which visualization is best for showing the distribution of a single numerical variable?", "options": ["Scatter plot", "Histogram", "Line chart", "Heatmap"], "answer": "Histogram"}
-    ],
-    "ai/ml": [
-        {"question": "What does 'Transformer' architecture primarily depend on in NLP?", "options": ["Recurrent connections", "Convolutional layers", "Attention mechanisms", "Random forests"], "answer": "Attention mechanisms"},
-        {"question": "Which activation function is most commonly used in hidden layers of Deep Neural Networks?", "options": ["Sigmoid", "Tanh", "ReLU", "Linear"], "answer": "ReLU"},
-        {"question": "What is the purpose of 'Backpropagation'?", "options": ["To generate synthetic data", "To calculate gradients and update weights in a neural network", "To visualize the model architecture", "To stop the training early"], "answer": "To calculate gradients and update weights in a neural network"}
-    ]
-}
-
 @app.route('/ask', methods=['POST'])
 def ask_api():
     try:
-        data_in = request.json or {}
-        
-        # 1. Save results if provided
-        if "email" in data_in and "summary" in data_in:
+        # Save previous result if provided
+        data_in = request.json
+        if data_in and "email" in data_in and "summary" in data_in:
              db["assessment_results"].insert_one({
                  "email": data_in["email"],
                  "summary": data_in["summary"],
@@ -278,100 +140,31 @@ def ask_api():
              })
              return jsonify({"msg": "Saved"})
 
-        # 2. Identify & Normalize Role
-        role_input = data_in.get("role", "").strip()
-        role_key = normalize_role(role_input)
-        exclude_list = data_in.get("exclude", []) # List of question texts already seen
-        amount = data_in.get("amount", 1) # Support batching for "Mock Experience"
+        # Normal Queston Fetch
+        # We use a public, keyless API locked to 'Science: Computers' (Category 18)
+        api_url = "https://opentdb.com/api.php?amount=1&category=18&type=multiple"
         
-        results = []
-        
-        # --- STRATEGY A: COMPREHENSIVE DB BANK ---
-        if role_key:
-            db_count = questions_collection.count_documents({"role": role_key})
-            if db_count < 100 and not SEEDING_LOG.get(role_key):
-                threading.Thread(target=generate_questions_background, args=(role_key,), daemon=True).start()
+        response = requests.get(api_url, timeout=10)
+        data = response.json()
 
-            if db_count > 0:
-                pipeline = [
-                    {"$match": {"role": role_key, "question": {"$nin": exclude_list}}},
-                    {"$sample": {"size": amount}}
-                ]
-                results = list(questions_collection.aggregate(pipeline))
-                if len(results) >= amount:
-                    return jsonify([{"question": q["question"], "answer": q["answer"], "options": q["options"]} for q in results] if amount > 1 else {
-                        "question": results[0]["question"],
-                        "answer": results[0]["answer"],
-                        "options": results[0]["options"]
-                    })
+        if data['response_code'] == 0:
+            item = data['results'][0]
             
-            # --- Map to Static Bank Fallback ---
-            if role_key in ROLE_MCQ_BANK:
-                available_bank = [q for q in ROLE_MCQ_BANK[role_key] if q["question"] not in exclude_list]
-                if len(available_bank) >= amount:
-                    selected = random.sample(available_bank, amount)
-                    return jsonify(selected if amount > 1 else selected[0])
-                elif available_bank:
-                    # If not enough available, take what we have
-                    return jsonify(available_bank if amount > 1 else available_bank[0])
+            # Use html.unescape to fix symbols like &quot;
+            question = html.unescape(item['question'])
+            answer = html.unescape(item['correct_answer'])
+            options = [html.unescape(opt) for opt in item['incorrect_answers']]
+            
+            options.append(answer)
+            random.shuffle(options)
+
+            return jsonify({
+                "question": question,
+                "answer": answer,
+                "options": options
+            })
         
-        # --- STRATEGY B: AI GENERATION FOR NICHE ROLES (Priority 2) ---
-        if role_input:
-            try:
-                ollama_url = "http://localhost:11434/api/generate"
-                prompt = f"""
-                Generate a single multiple-choice technical interview question for a '{role_input}' role.
-                Avoid these topics: {', '.join(exclude_list[-3:])}
-                Strictly Technical. Use JSON format.
-                """
-                
-                payload = {
-                    "model": "phi",
-                    "prompt": prompt,
-                    "stream": False,
-                    "format": "json",
-                    "options": {"temperature": 0.7, "num_predict": 150}
-                }
-                
-                resp = requests.post(ollama_url, json=payload, timeout=10)
-                if resp.status_code == 200:
-                    import json
-                    ai_data = resp.json().get("response", "")
-                    start = ai_data.find("{")
-                    end = ai_data.rfind("}") + 1
-                    if start != -1 and end != -1:
-                        return jsonify(json.loads(ai_data[start:end]))
-            except Exception as e:
-                print(f"AI Fallback Failed: {e}")
-
-        # --- STRATEGY C: PUBLIC API FALLBACK (General CS) ---
-        try:
-            api_url = "https://opentdb.com/api.php?amount=1&category=18&type=multiple"
-            response = requests.get(api_url, timeout=5)
-            data = response.json()
-
-            if data['response_code'] == 0:
-                item = data['results'][0]
-                question = html.unescape(item['question'])
-                answer = html.unescape(item['correct_answer'])
-                options = [html.unescape(opt) for opt in item['incorrect_answers']]
-                options.append(answer)
-                random.shuffle(options)
-
-                return jsonify({
-                    "question": question,
-                    "answer": answer,
-                    "options": options
-                })
-        except:
-            pass
-        
-        # Final Final Fallback
-        return jsonify({
-            "question": "What is the time complexity of Binary Search?",
-            "answer": "O(log n)",
-            "options": ["O(n)", "O(log n)", "O(n^2)", "O(1)"]
-        })
+        return jsonify({"error": "Failed to fetch question from public database"}), 500
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -1082,55 +875,6 @@ Rules:
         print(f"Chatbot error: {e}")
         return jsonify({"error": str(e)}), 500
 
-def generate_ollama_response(prompt, max_tokens=400):
-    """Helper for AI Smart Interview to talk to local Ollama instance."""
-    ollama_url = "http://localhost:11434/api/generate"
-    payload = {
-        "model": "llama3.2:1b",
-        "prompt": prompt,
-        "stream": False,
-        "options": {"num_predict": max_tokens}
-    }
-    try:
-        response = requests.post(ollama_url, json=payload, timeout=120)
-        return response.json().get("response", "").strip()
-    except Exception as e:
-        print(f"Ollama generation error: {e}")
-        return "I'm sorry, I'm having trouble connecting to my AI core right now."
-
-def seed_smart_questions_background(role, difficulty):
-    """Background thread to pre-fill open-ended technical questions."""
-    try:
-        count = smart_questions_collection.count_documents({"role": role, "difficulty": difficulty})
-        if count >= 20: return
-
-        print(f"Seeding smart questions for {role} ({difficulty})...")
-        prompt = f"""
-Generate 10 unique technical interview questions for a {role}.
-Level: {difficulty}.
-Focus on real-world scenarios.
-Return ONLY questions, one per line. No numbers, no explanation.
-End each with a question mark.
-"""
-        response = generate_ollama_response(prompt, 1000)
-        # Clean and filter
-        questions = [q.strip() for q in response.split('\n') if q.strip() and '?' in q]
-        
-        new_count = 0
-        for q in questions:
-            # Basic sanitization: remove leading numbers like "1. "
-            clean_q = re.sub(r'^\d+[\.\)]\s*', '', q)
-            res = smart_questions_collection.update_one(
-                {"question": clean_q},
-                {"$set": {"role": role, "difficulty": difficulty, "question": clean_q, "date": datetime.datetime.utcnow()}},
-                upsert=True
-            )
-            if res.upserted_id: new_count += 1
-            
-        print(f"Successfully seeded {new_count} new questions for {role}.")
-    except Exception as e:
-        print(f"Seeding error: {e}")
-
 
 # ---------------- INTERVIEW AVATAR ENGINE ---------------- #
 
@@ -1392,9 +1136,52 @@ def get_collection_data(name):
 # -----------------------------
 # INTEGRITY / SKILL ASSESSMENT (MCQ)
 # -----------------------------
-# MCQ_BANK Removed (Consolidated)
+MCQ_BANK = [
+    {"question": "What is the time complexity of binary search?", "options": ["O(n)", "O(log n)", "O(n^2)", "O(1)"], "answer": "O(log n)"},
+    {"question": "Which of these is NOT a primitive type in JavaScript?", "options": ["String", "Number", "Object", "Boolean"], "answer": "Object"},
+    {"question": "What does SQL stand for?", "options": ["Structured Query Language", "Simple Query Logic", "Standard Question List", "System Query Level"], "answer": "Structured Query Language"},
+    {"question": "What is the purpose of Docker?", "options": ["To compile code", "To containerize applications", "To manage databases", "To host websites"], "answer": "To containerize applications"},
+    {"question": "In Python, which keyword is used to define a function?", "options": ["func", "def", "define", "function"], "answer": "def"},
+    {"question": "Which HTTP method is idempotent?", "options": ["POST", "PUT", "PATCH", "CONNECT"], "answer": "PUT"}, 
+    {"question": "What is React mainly used for?", "options": ["Backend Logic", "Database Management", "Building User Interfaces", "Machine Learning"], "answer": "Building User Interfaces"},
+    {"question": "What is the capital of France?", "options": ["Berlin", "London", "Madrid", "Paris"], "answer": "Paris"}, # Test Q
+    {"question": "Which data struct follows LIFO?", "options": ["Queue", "Stack", "Array", "Tree"], "answer": "Stack"},
+    {"question": "What is 2 + 2?", "options": ["3", "4", "5", "22"], "answer": "4"}
+]
 
-# Routes Removed (Consolidated)
+@app.route('/ask', methods=['POST'])
+def ask_question():
+    try:
+        # get_json(silent=True) returns None if parsing fails or body is empty
+        data = request.get_json(silent=True)
+        
+        if not data:
+             # Random Question
+             import random
+             question = random.choice(MCQ_BANK)
+             return jsonify(question)
+
+        # Check if saving results
+        if 'summary' in data:
+            # Persist results
+            email = data.get('email')
+            summary = data.get('summary')
+            if email:
+                db['assessment_results'].insert_one({
+                    "email": email,
+                    "summary": summary,
+                    "date": datetime.datetime.utcnow()
+                })
+            return jsonify({"status": "saved"})
+
+        # Default: Random Question
+        import random
+        question = random.choice(MCQ_BANK)
+        return jsonify(question)
+
+    except Exception as e:
+        print(f"Error in /ask: {e}")
+        return jsonify({"error": str(e)}), 500
 
 # ---------------- CAREER SHOCK ALERTS ENGINE ---------------- #
 # Note: Ensure feedparser is installed: pip install feedparser
@@ -1504,76 +1291,6 @@ def get_shocks():
     except Exception as e:
         print(f"Error generating shocks: {e}")
         return jsonify({"error": str(e)}), 500
-
-# --- AI SMART INTERVIEW ROUTES ---
-
-@app.route("/start", methods=["POST"])
-def smart_interview_start():
-    data = request.json or {}
-    role_name = data.get("role", "Frontend Developer")
-    diff = data.get("difficulty", "Easy")
-    
-    # 1. Try to get from DB (Instant)
-    try:
-        sample = list(smart_questions_collection.aggregate([
-            {"$match": {"role": role_name, "difficulty": diff}},
-            {"$sample": {"size": 1}}
-        ]))
-        
-        # 2. Trigger background seeder if count is low
-        threading.Thread(target=seed_smart_questions_background, args=(role_name, diff)).start()
-
-        if sample:
-            return jsonify({"question": sample[0]["question"]})
-    except Exception as e:
-        print(f"DB Fetch Error: {e}")
-
-    # 3. Fallback to AI (Slow but effective)
-    prompt = f"Ask ONE sharp technical interview question for a {role_name} at {diff} level. Return ONLY the question text."
-    question = generate_ollama_response(prompt, 150)
-    return jsonify({"question": question or "Could you explain your favorite technical project?"})
-
-@app.route("/evaluate", methods=["POST"])
-def smart_interview_evaluate():
-    data = request.json or {}
-    question = data.get("question")
-    answer = data.get("answer")
-
-    prompt = f"""
-Evaluate this technical interview answer. Be concise and critical.
-Q: {question}
-A: {answer}
-
-Format:
-Logic: [Correctness/Accuracy]
-Grammar: [Flow]
-Corrected: [Concise improvement]
-Expected: [Key points missing]
-"""
-    evaluation = generate_ollama_response(prompt, 400) # Smaller token limit for speed
-    return jsonify({"evaluation": evaluation})
-
-@app.route("/next", methods=["GET"])
-def smart_interview_next():
-    role_name = request.args.get("role", "Frontend Developer")
-    diff = request.args.get("difficulty", "Easy")
-    
-    # 1. Try to get from DB (Instant)
-    try:
-        sample = list(smart_questions_collection.aggregate([
-            {"$match": {"role": role_name, "difficulty": diff}},
-            {"$sample": {"size": 1}}
-        ]))
-        
-        if sample:
-            return jsonify({"question": sample[0]["question"]})
-    except Exception as e:
-        print(f"DB Fetch Error: {e}")
-
-    # 2. Fallback to AI
-    prompt = f"Ask a new technical question for a {role_name} ({diff}). Return only question."
-    question = generate_ollama_response(prompt, 150)
-    return jsonify({"question": question or "What is your approach to debugging complex issues?"})
 
 if __name__ == "__main__":
     app.run(port=5000, debug=True)

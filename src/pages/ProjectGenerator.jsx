@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { Sparkles, ArrowRight, Loader } from 'lucide-react';
+import { useNavigate } from "react-router-dom"; 
 import ProjectCard from '../components/ProjectCard';
 import { useAuth } from '../context/AuthContext';
 
@@ -15,6 +16,8 @@ const PROJECT_TEMPLATES = [
 
 const ProjectGenerator = () => {
     const { user } = useAuth();
+    const navigate = useNavigate(); 
+    
     const [role, setRole] = useState('');
     const [currentSkills, setCurrentSkills] = useState('');
     const [missingSkills, setMissingSkills] = useState('');
@@ -28,24 +31,19 @@ const ProjectGenerator = () => {
         setError(null);
         setProjects([]);
 
-        // Local Synthesis Logic (provided by user)
         const generateLocalProjects = () => {
-            const normalizedRole = role.toLowerCase();
+            const normalizedRole = (role || "").toLowerCase();
             const skillsToLearn = (missingSkills || "").toLowerCase();
 
             return PROJECT_TEMPLATES.map(project => {
                 let score = 0;
-                // High priority: Matching the role
                 if (project.tags.some(tag => normalizedRole.includes(tag))) score += 10;
-                // High priority: Matching skills the user wants to learn
                 if (skillsToLearn && project.techStack.toLowerCase().includes(skillsToLearn)) score += 15;
-
                 return { ...project, score: score + Math.random() };
             }).sort((a, b) => b.score - a.score).slice(0, 3);
         };
 
         try {
-            // Attempt backend generation first (Node.js Backend on Port 8000)
             const response = await axios.post('http://localhost:8000/api/projects/generate', {
                 role,
                 currentSkills,
@@ -56,20 +54,29 @@ const ProjectGenerator = () => {
             if (response.data.projects && response.data.projects.length > 0) {
                 setProjects(response.data.projects);
             } else {
-                // If backend returns empty, use local fallback
                 setProjects(generateLocalProjects());
             }
         } catch (err) {
-            console.error("Node.js Backend failed, using local templates:", err);
-            // Fallback to local templates if backend is down
+            console.error("Backend failed, using local templates:", err);
             setProjects(generateLocalProjects());
         } finally {
             setLoading(false);
         }
     };
 
+    const handleProjectClick = (project) => {
+        // Extract the first skill and trim it for the Roadmap Generator
+        const firstSkill = project.techStack.split(",")[0].trim();
+
+        navigate("/dashboard/roadmap", {
+            state: {
+                topic: firstSkill
+            }
+        });
+    };
+
     return (
-        <div className="space-y-8">
+        <div className="space-y-8 p-4">
             <div className="flex flex-col gap-2">
                 <h1 className="text-3xl font-bold tracking-tight">Project Generator</h1>
                 <p className="text-muted-foreground">
@@ -78,7 +85,6 @@ const ProjectGenerator = () => {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Input Form */}
                 <div className="lg:col-span-1">
                     <div className="rounded-xl border border-border/50 bg-card p-6 shadow-sm">
                         <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
@@ -88,48 +94,42 @@ const ProjectGenerator = () => {
 
                         <form onSubmit={handleGenerate} className="space-y-4">
                             <div className="space-y-2">
-                                <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                    Target Role
-                                </label>
+                                <label className="text-sm font-medium">Target Role</label>
                                 <input
                                     type="text"
                                     placeholder="e.g. Frontend Developer"
                                     value={role}
                                     onChange={(e) => setRole(e.target.value)}
-                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                                     required
                                 />
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                    Current Skills
-                                </label>
+                                <label className="text-sm font-medium">Current Skills</label>
                                 <textarea
                                     placeholder="e.g. HTML, CSS, JavaScript"
                                     value={currentSkills}
                                     onChange={(e) => setCurrentSkills(e.target.value)}
-                                    className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+                                    className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary resize-none"
                                     required
                                 />
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                    Skills to Improve/Learn
-                                </label>
+                                <label className="text-sm font-medium">Skills to Improve/Learn</label>
                                 <textarea
                                     placeholder="e.g. React, TypeScript, Tailwind"
                                     value={missingSkills}
                                     onChange={(e) => setMissingSkills(e.target.value)}
-                                    className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+                                    className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary resize-none"
                                 />
                             </div>
 
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 w-full mt-4"
+                                className="inline-flex items-center justify-center rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 w-full mt-4 disabled:opacity-50 transition-colors"
                             >
                                 {loading ? (
                                     <>
@@ -147,7 +147,6 @@ const ProjectGenerator = () => {
                     </div>
                 </div>
 
-                {/* Results Area */}
                 <div className="lg:col-span-2">
                     {error && (
                         <div className="p-4 mb-4 rounded-lg bg-red-500/10 border border-red-500/20 text-red-500">
@@ -165,7 +164,13 @@ const ProjectGenerator = () => {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {projects.map((project, index) => (
-                            <ProjectCard key={index} project={project} />
+                            <div 
+                                key={index} 
+                                onClick={() => handleProjectClick(project)} 
+                                className="cursor-pointer hover:scale-[1.02] transition-transform active:scale-95"
+                            >
+                                <ProjectCard project={project} />
+                            </div>
                         ))}
                     </div>
                 </div>

@@ -14,7 +14,9 @@ import {
     ChevronDown,
     Layers
 } from "lucide-react";
+import { useLocation } from "react-router-dom";
 
+// Recursive Node Component
 const Node = ({ node, level = 0 }) => {
     const [isOpen, setIsOpen] = useState(level < 1);
 
@@ -48,7 +50,7 @@ const Node = ({ node, level = 0 }) => {
                         className="overflow-hidden"
                     >
                         {node.children.map((child, index) => (
-                            <Node key={index} node={child} level={level + 1} />
+                            <Node key={`${child.title}-${index}`} node={child} level={level + 1} />
                         ))}
                     </motion.div>
                 )}
@@ -58,6 +60,7 @@ const Node = ({ node, level = 0 }) => {
 };
 
 const RoadmapGenerator = () => {
+    const location = useLocation(); 
     const [topic, setTopic] = useState("");
     const [roadmap, setRoadmap] = useState(null);
     const [topicLinks, setTopicLinks] = useState(null);
@@ -68,6 +71,7 @@ const RoadmapGenerator = () => {
     const [error, setError] = useState("");
     const [activeTab, setActiveTab] = useState("topic");
 
+    // Load roles on mount
     useEffect(() => {
         fetch("http://127.0.0.1:5000/api/roles")
             .then(res => res.json())
@@ -75,15 +79,28 @@ const RoadmapGenerator = () => {
             .catch(err => console.error("Error fetching roles:", err));
     }, []);
 
-    const fetchTopic = async () => {
-        if (!topic.trim()) return;
+    // AUTO-GENERATE when arriving from Project Generator
+    useEffect(() => {
+        if (location.state?.topic) {
+            const passedTopic = location.state.topic;
+            setTopic(passedTopic);
+            setActiveTab("topic");
+            // Call the fetch function directly with the passed topic
+            fetchTopicData(passedTopic);
+        }
+    }, [location.state]);
+
+    const fetchTopicData = async (queryTopic) => {
+        const targetTopic = queryTopic || topic;
+        if (!targetTopic || typeof targetTopic !== 'string' || !targetTopic.trim()) return;
+
         setIsLoading(true);
         setError("");
         try {
             const response = await fetch("http://127.0.0.1:5000/api/topic", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ topic })
+                body: JSON.stringify({ topic: targetTopic })
             });
 
             const result = await response.json();
@@ -97,7 +114,7 @@ const RoadmapGenerator = () => {
                 setError(result.error || "Failed to generate roadmap");
             }
         } catch (err) {
-            setError("Server connection failed");
+            setError("Server connection failed. Make sure your Python backend (Port 5000) is running.");
         } finally {
             setIsLoading(false);
         }
@@ -128,10 +145,9 @@ const RoadmapGenerator = () => {
     };
 
     return (
-        <div className="max-w-6xl mx-auto space-y-8 pb-12">
-            {/* Header */}
+        <div className="max-w-6xl mx-auto space-y-8 pb-12 p-4">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-card border border-border p-8 rounded-3xl shadow-xl overflow-hidden relative">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full -mr-32 -mt-32 blur-3xl animate-pulse" />
+                <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full -mr-32 -mt-32 blur-3xl" />
                 <div className="relative z-10 flex items-center gap-6">
                     <div className="h-16 w-16 bg-primary/10 rounded-2xl flex items-center justify-center shadow-lg shadow-primary/5">
                         <Map className="text-primary h-8 w-8" />
@@ -143,12 +159,11 @@ const RoadmapGenerator = () => {
                 </div>
             </div>
 
-            {/* Tabs */}
             <div className="flex gap-4 bg-muted/30 p-1.5 rounded-2xl w-fit border border-border">
                 <button
                     onClick={() => setActiveTab("topic")}
                     className={`flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-medium transition-all ${activeTab === "topic"
-                            ? "bg-card text-primary shadow-sm border border-border/50"
+                            ? "bg-white text-primary shadow-sm border border-border/50"
                             : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                         }`}
                 >
@@ -158,7 +173,7 @@ const RoadmapGenerator = () => {
                 <button
                     onClick={() => setActiveTab("role")}
                     className={`flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-medium transition-all ${activeTab === "role"
-                            ? "bg-card text-primary shadow-sm border border-border/50"
+                            ? "bg-white text-primary shadow-sm border border-border/50"
                             : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                         }`}
                 >
@@ -168,7 +183,6 @@ const RoadmapGenerator = () => {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                {/* Input Controls */}
                 <div className="lg:col-span-4 space-y-6">
                     <motion.div
                         initial={{ opacity: 0, x: -20 }}
@@ -182,7 +196,7 @@ const RoadmapGenerator = () => {
                                     <h2 className="font-bold text-lg">Explore a Topic</h2>
                                 </div>
                                 <p className="text-sm text-muted-foreground leading-relaxed">
-                                    Enter any technology or subject to generate a structured learning path sourced from Wikipedia and curated for developers.
+                                    Enter any technology or subject to generate a structured learning path.
                                 </p>
                                 <div className="relative group">
                                     <input
@@ -190,13 +204,13 @@ const RoadmapGenerator = () => {
                                         placeholder="e.g. React, Python, Blockchain"
                                         value={topic}
                                         onChange={(e) => setTopic(e.target.value)}
-                                        onKeyDown={(e) => e.key === "Enter" && fetchTopic()}
-                                        className="w-full bg-muted/50 border border-border rounded-2xl py-4 pl-4 pr-12 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all text-foreground placeholder:text-muted-foreground/50"
+                                        onKeyDown={(e) => e.key === "Enter" && fetchTopicData()}
+                                        className="w-full bg-muted/50 border border-border rounded-2xl py-4 pl-4 pr-12 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all text-foreground"
                                     />
                                     <button
-                                        onClick={fetchTopic}
+                                        onClick={() => fetchTopicData()}
                                         disabled={isLoading}
-                                        className="absolute right-3 top-1/2 -translate-y-1/2 p-2 bg-primary text-primary-foreground rounded-xl shadow-lg hover:scale-110 active:scale-95 transition-all disabled:opacity-50"
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 p-2 bg-primary text-white rounded-xl shadow-lg hover:scale-110 active:scale-95 transition-all disabled:opacity-50"
                                     >
                                         <ChevronRight size={20} />
                                     </button>
@@ -209,7 +223,7 @@ const RoadmapGenerator = () => {
                                     <h2 className="font-bold text-lg">Target a Role</h2>
                                 </div>
                                 <p className="text-sm text-muted-foreground leading-relaxed">
-                                    Select a professional role to see the top technical skills required based on O*NET industry standards.
+                                    Select a role to see the top technical skills required.
                                 </p>
                                 <div className="space-y-4">
                                     <select
@@ -225,7 +239,7 @@ const RoadmapGenerator = () => {
                                     <button
                                         onClick={fetchRole}
                                         disabled={isLoading || !selectedRole}
-                                        className="w-full py-4 bg-primary text-primary-foreground rounded-2xl font-bold shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all flex items-center justify-center gap-2 group disabled:opacity-50"
+                                        className="w-full py-4 bg-primary text-white rounded-2xl font-bold shadow-lg hover:opacity-90 transition-all flex items-center justify-center gap-2 group disabled:opacity-50"
                                     >
                                         Generate Roadmap <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
                                     </button>
@@ -246,7 +260,6 @@ const RoadmapGenerator = () => {
                     </motion.div>
                 </div>
 
-                {/* Results Display */}
                 <div className="lg:col-span-8">
                     <AnimatePresence mode="wait">
                         {isLoading ? (
@@ -314,6 +327,14 @@ const RoadmapGenerator = () => {
                                                     <CheckCircle2 size={18} />
                                                 </div>
                                                 <span className="text-xs font-mono text-muted-foreground">Skill #{index + 1}</span>
+                                                <a
+                                                    href={`https://www.youtube.com/results?search_query=${encodeURIComponent(res.skill + " tutorial")}`}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    className="ml-auto text-xs text-red-500 hover:underline flex items-center gap-1"
+                                                >
+                                                    <Youtube size={12} /> Search
+                                                </a>
                                             </div>
                                             <h3 className="font-bold text-lg mb-4">{res.skill}</h3>
                                             <div className="flex gap-2">
@@ -328,7 +349,7 @@ const RoadmapGenerator = () => {
                                     ))}
                                 </motion.div>
                             ) : (
-                                <EmptyState icon={Briefcase} title="Define your future role" description="Select a career path to discover the industry-standard technology stack you need to master." />
+                                <EmptyState icon={Briefcase} title="Define your future role" description="Select a career path to discover the industry-standard technology stack." />
                             )
                         )}
                     </AnimatePresence>

@@ -90,8 +90,8 @@ const FitScoreModal = ({ isOpen, onClose, job }) => {
                                     Matched Skills
                                 </h3>
                                 <div className="flex flex-wrap gap-2">
-                                    {(matchedSkills || []).filter(s => s && s.trim() !== "").map((skill, i) => (
-                                        <span key={`match-${i}`} className="px-2 py-1 bg-green-500/10 border border-green-500/20 rounded text-xs text-green-400">
+                                    {matchedSkills.map(skill => (
+                                        <span key={skill} className="px-2 py-1 bg-green-500/10 border border-green-500/20 rounded text-xs text-green-400">
                                             {skill}
                                         </span>
                                     ))}
@@ -104,8 +104,8 @@ const FitScoreModal = ({ isOpen, onClose, job }) => {
                                     Missing Skills (Gap)
                                 </h3>
                                 <div className="flex flex-wrap gap-2">
-                                    {(missingSkills || []).filter(s => s && s.trim() !== "").map((skill, i) => (
-                                        <span key={`miss-${i}`} className="px-2 py-1 bg-orange-500/10 border border-orange-500/20 rounded text-xs text-orange-400">
+                                    {missingSkills.map(skill => (
+                                        <span key={skill} className="px-2 py-1 bg-orange-500/10 border border-orange-500/20 rounded text-xs text-orange-400">
                                             {skill}
                                         </span>
                                     ))}

@@ -7,45 +7,6 @@ const DEV_TO_API = "https://dev.to/api/articles";
 // --- CURATED OPPORTUNITIES (Legacy / Premium Listings) ---
 const CURATED_OPPORTUNITIES = [
     {
-        id: 'job-meta-1',
-        title: 'Frontend Engineer (React)',
-        company: 'Meta',
-        location: 'Remote / London',
-        type: 'Full-time',
-        posted: 'Feb 14, 2026',
-        tags: ['React', 'JavaScript', 'Tailwind', 'Frontend'],
-        category: 'jobs',
-        applyLink: 'https://www.metacareers.com/jobs/',
-        description: 'Build immersive social experiences using React and modern JavaScript. Optimize frontend performance at scale.',
-        salary: '£95k - £160k'
-    },
-    {
-        id: 'job-openai-1',
-        title: 'AI Software Engineer',
-        company: 'OpenAI',
-        location: 'San Francisco / Remote',
-        type: 'Full-time',
-        posted: 'Feb 13, 2026',
-        tags: ['Python', 'AI', 'Node.js', 'LLM'],
-        category: 'jobs',
-        applyLink: 'https://openai.com/careers',
-        description: 'Integrate state-of-the-art AI models into production systems. Scale our developer platform and API.',
-        salary: '$180k - $300k'
-    },
-    {
-        id: 'job-vercel-1',
-        title: 'Fullstack Engineer',
-        company: 'Vercel',
-        location: 'Remote',
-        type: 'Full-time',
-        posted: 'Feb 14, 2026',
-        tags: ['Next.js', 'React', 'Node.js', 'TypeScript'],
-        category: 'jobs',
-        applyLink: 'https://vercel.com/careers',
-        description: 'Shape the future of the web. Work on Next.js core and our global edge network.',
-        salary: '$140k - $220k'
-    },
-    {
         id: 'job-sf-1',
         title: 'Software Engineering LMTS Fullstack',
         company: 'Salesforce',
@@ -98,6 +59,19 @@ const CURATED_OPPORTUNITIES = [
         deadline: 'Apr 2026'
     },
     {
+        id: 'intern-tik-1',
+        title: 'Software Engineer Intern',
+        company: 'TikTok',
+        location: 'Singapore',
+        type: 'Internship',
+        posted: 'Feb 12, 2026',
+        tags: ['Java', 'Go', 'Backend'],
+        category: 'internships',
+        applyLink: 'https://careers.tiktok.com/',
+        description: 'Join our backend team to build scalable systems.',
+        salary: 'Stipend'
+    },
+    {
         id: 'intern-mse-1',
         title: 'Data Science Intern',
         company: 'Microsoft',
@@ -108,6 +82,19 @@ const CURATED_OPPORTUNITIES = [
         category: 'internships',
         applyLink: 'https://careers.microsoft.com/students',
         description: 'Work with the Azure Data team on large scale ML problems.',
+        salary: 'Stipend'
+    },
+    {
+        id: 'intern-amz-1',
+        title: 'Software Dev Engineer Intern',
+        company: 'Amazon',
+        location: 'Hyderabad',
+        type: 'Internship',
+        posted: 'Feb 11, 2026',
+        tags: ['Java', 'Distributed Systems'],
+        category: 'internships',
+        applyLink: 'https://www.amazon.jobs/en/teams/internships-for-students',
+        description: 'Build high-scale systems for Amazon retail.',
         salary: 'Stipend'
     }
 ];

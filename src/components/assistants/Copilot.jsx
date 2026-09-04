@@ -112,9 +112,9 @@ const Copilot = ({ isOpen, onClose }) => {
                                 {/* Suggestions Chips */}
                                 {msg.suggestions && (
                                     <div className="flex flex-wrap gap-2 mt-2">
-                                        {(msg.suggestions || []).filter(s => s && s.trim() !== "").map((sugg, i) => (
+                                        {msg.suggestions.map(sugg => (
                                             <button
-                                                key={`sugg-${msg.id}-${i}`}
+                                                key={sugg}
                                                 onClick={() => { setInput(sugg); handleSend(); }}
                                                 className="text-xs px-2 py-1 bg-accent/10 border border-accent/20 rounded-full text-accent hover:bg-accent/20 transition-colors"
                                             >

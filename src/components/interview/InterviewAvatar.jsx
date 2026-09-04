@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import * as faceapi from "face-api.js";
-import { Mic, MicOff, Camera, Video, Play, StopCircle, RefreshCw, AlertCircle, BrainCircuit } from 'lucide-react';
+import { Mic, MicOff, Camera, Video, Play, StopCircle, RefreshCw, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function InterviewAvatar() {
@@ -8,19 +8,16 @@ export default function InterviewAvatar() {
     const recognitionRef = useRef(null);
 
     const [question, setQuestion] = useState("");
-    const [evaluation, setEvaluation] = useState("");
-    const [difficulty, setDifficulty] = useState("Easy");
-    const [role, setRole] = useState("Frontend Developer");
+    const [role, setRole] = useState("developer");
+    const [index, setIndex] = useState(0);
     const [emotion, setEmotion] = useState("Detecting...");
     const [modelsLoaded, setModelsLoaded] = useState(false);
-    const [recording, setRecording] = useState(false);
+    const [finalScore, setFinalScore] = useState(0);
+    const [finished, setFinished] = useState(false);
     const [listening, setListening] = useState(false);
-    const [spokenText, setSpokenText] = useState("");
+    const [transcript, setTranscript] = useState("");
     const [processing, setProcessing] = useState(false);
     const [started, setStarted] = useState(false);
-
-    const mediaRecorderRef = useRef(null);
-    const recordedChunks = useRef([]);
 
     /* ================= CAMERA ================= */
 
@@ -104,51 +101,15 @@ export default function InterviewAvatar() {
 
     /* ================= SPEAK FUNCTION ================= */
 
-    const speak = (text) => {
+    const speakQuestion = (text) => {
+        // Cancel previous speech
         window.speechSynthesis.cancel();
+
         const utter = new SpeechSynthesisUtterance(text);
         utter.lang = "en-US";
+        utter.rate = 1.0;
+        utter.pitch = 1.0;
         window.speechSynthesis.speak(utter);
-    };
-
-    /* ----------- RECORDING LOGIC ----------- */
-
-    const startRecording = () => {
-        if (!videoRef.current?.srcObject) return;
-        const stream = videoRef.current.srcObject;
-        recordedChunks.current = [];
-
-        const mediaRecorder = new MediaRecorder(stream, {
-            mimeType: "video/webm"
-        });
-
-        mediaRecorderRef.current = mediaRecorder;
-
-        mediaRecorder.ondataavailable = (event) => {
-            if (event.data.size > 0) {
-                recordedChunks.current.push(event.data);
-            }
-        };
-
-        mediaRecorder.onstop = () => {
-            const blob = new Blob(recordedChunks.current, {
-                type: "video/webm"
-            });
-
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = "interview_recording.webm";
-            a.click();
-        };
-
-        mediaRecorder.start();
-        setRecording(true);
-    };
-
-    const stopRecording = () => {
-        mediaRecorderRef.current?.stop();
-        setRecording(false);
     };
 
     /* ================= START INTERVIEW ================= */
@@ -156,23 +117,26 @@ export default function InterviewAvatar() {
     const startInterview = async () => {
         try {
             setProcessing(true);
-            setSpokenText("");
-            setEvaluation("");
-
-            const res = await fetch("http://127.0.0.1:5000/start", {
+            const res = await fetch("http://127.0.0.1:5000/api/interview/start", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ difficulty, role })
+                body: JSON.stringify({ role: role })
             });
 
             const data = await res.json();
+
             setQuestion(data.question || "");
+            setIndex(0);
+            setFinalScore(0);
+            setFinished(false);
+            setTranscript("");
             setStarted(true);
 
-            if (data.question) setTimeout(() => speak(data.question), 500);
+            if (data.question) setTimeout(() => speakQuestion(data.question), 500);
 
         } catch (err) {
             console.error("Start interview error:", err);
+            alert("Failed to connect to interview server.");
         } finally {
             setProcessing(false);
         }
@@ -189,89 +153,78 @@ export default function InterviewAvatar() {
             return;
         }
 
+        if (listening) {
+            recognitionRef.current?.stop();
+            setListening(false);
+            return;
+        }
+
         recognitionRef.current = new SpeechRecognition();
         recognitionRef.current.lang = "en-US";
-        recognitionRef.current.continuous = true;
-        recognitionRef.current.interimResults = true;
-
-        let finalTranscript = "";
+        recognitionRef.current.continuous = false;
+        recognitionRef.current.interimResults = false;
 
         recognitionRef.current.onstart = () => {
             setListening(true);
-            setSpokenText("");
+            setTranscript("");
         };
 
         recognitionRef.current.onresult = async (event) => {
-            let interimTranscript = "";
+            const userAnswer = event.results[0][0].transcript;
+            setTranscript(userAnswer);
+            setListening(false);
+            submitAnswer(userAnswer);
+        };
 
-            for (let i = event.resultIndex; i < event.results.length; i++) {
-                const transcriptItem = event.results[i][0].transcript;
+        recognitionRef.current.onerror = (event) => {
+            console.error("Speech error", event.error);
+            setListening(false);
+        };
 
-                if (event.results[i].isFinal) {
-                    finalTranscript += transcriptItem + " ";
-                } else {
-                    interimTranscript += transcriptItem;
-                }
-            }
-
-            const combinedText = finalTranscript + interimTranscript;
-            setSpokenText(combinedText);
-
-            if (combinedText.toLowerCase().includes("over")) {
-                recognitionRef.current.stop();
-                setListening(false);
-
-                const cleanAnswer = combinedText
-                    .replace(/over/gi, "")
-                    .trim();
-
-                evaluateAnswer(cleanAnswer);
-            }
+        recognitionRef.current.onend = () => {
+            setListening(false);
         };
 
         recognitionRef.current.start();
     };
 
-    const evaluateAnswer = async (userAnswer) => {
+    const submitAnswer = async (userAnswer) => {
         try {
             setProcessing(true);
-            const res = await fetch("http://127.0.0.1:5000/evaluate", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    question,
-                    answer: userAnswer
-                })
-            });
+            const res = await fetch(
+                "http://127.0.0.1:5000/api/interview/answer",
+                {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ answer: userAnswer })
+                }
+            );
 
             const data = await res.json();
-            setEvaluation(data.evaluation);
-            speak("Evaluation completed.");
+
+            const scoreToAdd = Number(data.score || 0);
+            setFinalScore(prev => prev + scoreToAdd);
+
+            if (data.finished) {
+                setFinished(true);
+            } else if (data.nextQuestion) {
+                setQuestion(data.nextQuestion);
+                setIndex(prev => prev + 1);
+                setTranscript("");
+                setTimeout(() => speakQuestion(data.nextQuestion), 500);
+            }
 
         } catch (err) {
-            console.error("Evaluation error:", err);
+            console.error("Answer error:", err);
         } finally {
             setProcessing(false);
         }
     }
 
-    const nextQuestion = async () => {
-        try {
-            setProcessing(true);
-            const res = await fetch(`http://127.0.0.1:5000/next?role=${role}&difficulty=${difficulty}`);
-            const data = await res.json();
-
-            setQuestion(data.question);
-            setEvaluation("");
-            setSpokenText("");
-            speak(data.question);
-        } catch (err) {
-            console.error("Next question error:", err);
-        } finally {
-            setProcessing(false);
-        }
-    };
-
+    const safeRating =
+        finalScore && !isNaN(finalScore)
+            ? Math.round((finalScore / ((index + 1) * 10)) * 10) // normalized to 10 based on max possible score per question (10)
+            : 0;
 
     return (
         <div className="flex flex-col md:flex-row gap-8 min-h-[600px]">
@@ -317,26 +270,12 @@ export default function InterviewAvatar() {
                                     onChange={(e) => setRole(e.target.value)}
                                     className="w-full bg-background border border-input rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary/50 outline-none"
                                 >
-                                    <option>Frontend Developer</option>
-                                    <option>Backend Developer</option>
-                                    <option>Fullstack Developer</option>
-                                    <option>Cloud Engineer</option>
-                                    <option>DevOps Engineer</option>
-                                    <option>AI Engineer</option>
-                                    <option>Data Scientist</option>
-                                    <option>Cybersecurity Analyst</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium mb-2">Select Difficulty</label>
-                                <select
-                                    value={difficulty}
-                                    onChange={(e) => setDifficulty(e.target.value)}
-                                    className="w-full bg-background border border-input rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary/50 outline-none"
-                                >
-                                    <option>Easy</option>
-                                    <option>Medium</option>
-                                    <option>Hard</option>
+                                    <option value="developer">General Developer</option>
+                                    <option value="frontend">Frontend (React/JS)</option>
+                                    <option value="backend">Backend (Node/API)</option>
+                                    <option value="python">Python</option>
+                                    <option value="sql">SQL & Databases</option>
+                                    <option value="hr">HR & Behavioral</option>
                                 </select>
                             </div>
                             <button
@@ -350,40 +289,20 @@ export default function InterviewAvatar() {
                         </div>
                     )}
 
-                    {started && (
-                        <div className="space-y-4">
-                            {!recording ? (
-                                <button
-                                    onClick={startRecording}
-                                    className="w-full bg-red-500/10 text-red-500 border border-red-500/20 py-3 rounded-lg font-bold hover:bg-red-500/20 transition-all flex items-center justify-center gap-2"
-                                >
-                                    <Video size={18} />
-                                    Start Session Recording
-                                </button>
-                            ) : (
-                                <button
-                                    onClick={stopRecording}
-                                    className="w-full bg-red-500 text-white py-3 rounded-lg font-bold animate-pulse flex items-center justify-center gap-2"
-                                >
-                                    <StopCircle size={18} />
-                                    Stop & Save Recording
-                                </button>
-                            )}
-
-                            <button
-                                onClick={() => {
-                                    setStarted(false);
-                                    setEvaluation("");
-                                    setQuestion("");
-                                    setSpokenText("");
-                                    window.speechSynthesis.cancel();
-                                }}
-                                className="w-full bg-secondary text-secondary-foreground py-3 rounded-lg font-medium hover:bg-secondary/80 transition-all flex items-center justify-center gap-2"
-                            >
-                                <RefreshCw size={18} />
-                                Reset Session
-                            </button>
-                        </div>
+                    {started && !finished && (
+                        <button
+                            onClick={() => {
+                                setStarted(false);
+                                setFinished(false);
+                                setIndex(0);
+                                setQuestion("");
+                                window.speechSynthesis.cancel();
+                            }}
+                            className="w-full bg-secondary text-secondary-foreground py-3 rounded-lg font-medium hover:bg-secondary/80 transition-all flex items-center justify-center gap-2"
+                        >
+                            <StopCircle size={18} />
+                            End Session
+                        </button>
                     )}
                 </div>
             </div>
@@ -401,85 +320,76 @@ export default function InterviewAvatar() {
                                 Our AI avatar uses facial expression analysis and speech recognition to simulate a real interview environment.
                             </p>
                         </div>
-                    ) : (
-                        <div className="space-y-6 flex flex-col h-full overflow-y-auto pr-2 custom-scrollbar">
-                            <div className="flex items-center justify-between text-xs font-bold uppercase tracking-widest text-muted-foreground border-b border-border pb-4 shrink-0">
-                                <span>Question Analysis</span>
-                                <span>{role} • {difficulty}</span>
+                    ) : finished ? (
+                        <div className="space-y-6 animate-in zoom-in-95 duration-500">
+                            <div className="w-24 h-24 bg-green-500/10 rounded-full flex items-center justify-center mx-auto border-4 border-green-500/20">
+                                <span className="text-3xl font-bold text-green-600">{safeRating}/10</span>
+                            </div>
+                            <div>
+                                <h2 className="text-2xl font-bold text-foreground mb-2">Interview Completed</h2>
+                                <p className="text-muted-foreground">Total Raw Score: {finalScore}</p>
                             </div>
 
-                            <div className="flex-grow flex flex-col items-center justify-center space-y-4 min-h-[100px]">
-                                <h2 className="text-xl md:text-2xl font-bold leading-tight bg-gradient-to-br from-foreground to-foreground/60 bg-clip-text text-transparent">
+                            <div className="bg-muted/50 p-4 rounded-xl text-left text-sm space-y-2">
+                                <p><strong>Feedback:</strong></p>
+                                <p>{safeRating >= 8 ? "Excellent work! You showed strong knowledge." : safeRating >= 5 ? "Good effort, but review some concepts." : "Keep practicing fundamental concepts."}</p>
+                            </div>
+
+                            <button
+                                onClick={() => {
+                                    setStarted(false);
+                                    setFinished(false);
+                                }}
+                                className="bg-primary text-primary-foreground px-6 py-2 rounded-lg font-medium hover:bg-primary/90"
+                            >
+                                Try Another Topic
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="space-y-8 flex flex-col h-full">
+                            <div className="flex items-center justify-between text-xs font-bold uppercase tracking-widest text-muted-foreground border-b border-border pb-4">
+                                <span>Question {index + 1}</span>
+                                <span>{role} Track</span>
+                            </div>
+
+                            <div className="flex-grow flex items-center justify-center">
+                                <h2 className="text-2xl md:text-3xl font-bold leading-tight bg-gradient-to-br from-foreground to-foreground/60 bg-clip-text text-transparent">
                                     "{question}"
                                 </h2>
                             </div>
 
-                            <div className="space-y-4 shrink-0">
+                            <div className="space-y-4">
                                 <AnimatePresence>
-                                    {spokenText && (
+                                    {transcript && (
                                         <motion.div
                                             initial={{ opacity: 0, y: 10 }}
                                             animate={{ opacity: 1, y: 0 }}
                                             className="bg-muted/50 p-4 rounded-xl text-left border border-border/50"
                                         >
-                                            <p className="text-xs font-bold text-primary mb-1 uppercase">Live Transcript:</p>
-                                            <p className="text-sm italic">"{spokenText}"</p>
-                                            {listening && (
-                                                <p className="text-[10px] text-muted-foreground mt-2 animate-pulse">
-                                                    Say <strong>"over"</strong> to submit for AI evaluation...
-                                                </p>
-                                            )}
-                                        </motion.div>
-                                    )}
-
-                                    {evaluation && (
-                                        <motion.div
-                                            initial={{ opacity: 0, scale: 0.95 }}
-                                            animate={{ opacity: 1, scale: 1 }}
-                                            className="bg-primary/5 p-5 rounded-xl text-left border border-primary/20 space-y-4 shadow-inner"
-                                        >
-                                            <p className="text-xs font-bold text-primary uppercase flex items-center gap-2 border-b border-primary/10 pb-2">
-                                                <BrainCircuit size={14} /> AI Evaluation Results
-                                            </p>
-                                            <div className="text-sm prose prose-sm dark:prose-invert max-h-48 overflow-y-auto">
-                                                <pre className="whitespace-pre-wrap font-sans text-foreground/80 leading-relaxed">
-                                                    {evaluation}
-                                                </pre>
-                                            </div>
+                                            <p className="text-xs font-bold text-primary mb-1 uppercase">Your Answer:</p>
+                                            <p className="text-sm italic">"{transcript}"</p>
                                         </motion.div>
                                     )}
                                 </AnimatePresence>
 
-                                <div className="grid grid-cols-2 gap-4">
-                                    <button
-                                        onClick={answerQuestion}
-                                        disabled={processing || listening}
-                                        className={`py-4 rounded-xl font-bold transition-all flex items-center justify-center gap-3 shadow-lg ${listening
-                                            ? "bg-red-500 text-white animate-pulse shadow-red-500/20 col-span-2"
+                                <button
+                                    onClick={answerQuestion}
+                                    disabled={processing}
+                                    className={`w-full py-6 rounded-2xl font-bold text-lg transition-all flex items-center justify-center gap-3 shadow-lg ${listening
+                                            ? "bg-red-500 text-white animate-pulse shadow-red-500/20"
                                             : "bg-primary text-primary-foreground hover:bg-primary/90 shadow-primary/20"
-                                            }`}
-                                    >
-                                        {listening ? (
-                                            <>
-                                                <MicOff size={20} /> Listening...
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Mic size={20} /> {spokenText ? "Re-record" : "Start Answer"}
-                                            </>
-                                        )}
-                                    </button>
-
-                                    {!listening && (
-                                        <button
-                                            onClick={nextQuestion}
-                                            disabled={processing}
-                                            className="py-4 rounded-xl bg-secondary text-secondary-foreground font-bold hover:bg-secondary/80 transition-all flex items-center justify-center gap-3"
-                                        >
-                                            <Play size={20} /> Next Question
-                                        </button>
+                                        }`}
+                                >
+                                    {listening ? (
+                                        <>
+                                            <MicOff size={24} /> Stop & Submit
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Mic size={24} /> {transcript ? "Resubmit Answer" : "Tap to Speak"}
+                                        </>
                                     )}
-                                </div>
+                                </button>
                             </div>
                         </div>
                     )}

@@ -8,76 +8,46 @@ import { useAuth } from '../context/AuthContext';
 
 const SkillAssessment = () => {
     const { user } = useAuth();
-    const [questions, setQuestions] = useState([]);
-    const [currentIndex, setCurrentIndex] = useState(0);
+    const [quiz, setQuiz] = useState(null);
     const [answered, setAnswered] = useState(false);
     const [isFinished, setIsFinished] = useState(false);
     const [loading, setLoading] = useState(false);
-    const [role, setRole] = useState('Frontend Developer');
+    // Summary stores performance by topic: { "Python": { total: 5, correct: 3 }, ... }
     const [summary, setSummary] = useState({});
-    const [seenQuestions, setSeenQuestions] = useState([]);
 
-    // Roles for selection
-    const ROLES = [
-        "Frontend Developer",
-        "Backend Developer",
-        "Fullstack Developer",
-        "Data Scientist",
-        "AI/ML Engineer",
-        "DevOps Engineer",
-        "Mobile App Developer",
-        "Blockchain Engineer",
-        "Product Manager",
-        "QA Engineer"
-    ];
-
-    const fetchQuestions = async () => {
+    const fetchQuestion = async () => {
         setLoading(true);
         setAnswered(false);
-        setCurrentIndex(0);
-        setQuestions([]);
         try {
             const res = await fetch('http://127.0.0.1:5000/ask', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    role: role,
-                    exclude: seenQuestions,
-                    amount: 10 // Request full batch for "Mock Experience"
-                })
+                body: JSON.stringify({ topic: "" }) // Skill could be passed here if state 'skill' existed
             });
             const data = await res.json();
-            if (Array.isArray(data)) {
-                setQuestions(data);
-                setSeenQuestions(prev => [...new Set([...prev, ...data.map(q => q.question)])]);
-            } else if (data.question) {
-                // Handle single question fallback
-                setQuestions([data]);
-            }
+            if (data.options) setQuiz(data);
         } catch (err) {
             console.error("Backend Error:", err);
             // Fallback for demo if backend fails
-            setQuestions([
-                {
-                    question: "What is the complexity of Binary Search?",
-                    answer: "O(log n)",
-                    options: ["O(n)", "O(log n)", "O(n^2)", "O(1)"]
-                }
-            ]);
+            setQuiz({
+                question: "What is the complexity of Binary Search?",
+                answer: "O(log n)",
+                options: ["O(n)", "O(log n)", "O(n^2)", "O(1)"]
+            });
         } finally {
             setLoading(false);
         }
     };
 
     const handleAnswer = (choice) => {
-        if (answered || !questions[currentIndex]) return;
+        if (answered || !quiz) return;
         setAnswered(true);
 
-        const currentQuiz = questions[currentIndex];
-        const isCorrect = choice === currentQuiz.answer;
+        const isCorrect = choice === quiz.answer;
 
-        const text = (currentQuiz.question + " " + currentQuiz.answer).toLowerCase();
-        let detectedTopic = role;
+        // Detect topic from the question text (User provided logic)
+        const text = (quiz.question + " " + quiz.answer).toLowerCase();
+        let detectedTopic = "General CS";
         if (text.includes("python")) detectedTopic = "Python";
         else if (text.includes("java") && !text.includes("javascript")) detectedTopic = "Java";
         else if (text.includes("javascript") || text.includes("js")) detectedTopic = "JavaScript";
@@ -85,6 +55,7 @@ const SkillAssessment = () => {
         else if (text.includes("html") || text.includes("css") || text.includes("web") || text.includes("dom")) detectedTopic = "Web Tech";
         else if (text.includes("sql") || text.includes("database")) detectedTopic = "Database";
 
+        // Update the summary breakdown
         setSummary(prev => {
             const current = prev[detectedTopic] || { total: 0, correct: 0 };
             return {
@@ -95,15 +66,6 @@ const SkillAssessment = () => {
                 }
             };
         });
-    };
-
-    const handleNext = () => {
-        if (currentIndex < questions.length - 1) {
-            setCurrentIndex(prev => prev + 1);
-            setAnswered(false);
-        } else {
-            setIsFinished(true);
-        }
     };
 
     const saveResults = async () => {
@@ -150,7 +112,7 @@ const SkillAssessment = () => {
 
     if (isFinished) {
         return (
-            <div className="space-y-8 p-6 max-w-4xl mx-auto">
+            <div className="space-y-8 p-8 max-w-4xl mx-auto">
                 <div className="text-center space-y-4">
                     <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-primary bg-clip-text text-transparent">
                         Final Honesty Report
@@ -178,7 +140,7 @@ const SkillAssessment = () => {
                             {Object.keys(summary).length === 0 ? (
                                 <tr><td colSpan={4} className="p-4 text-center text-muted-foreground">No questions answered.</td></tr>
                             ) : (
-                                Object.keys(summary).filter(t => t.trim() !== "").map(topic => {
+                                Object.keys(summary).map(topic => {
                                     const item = summary[topic];
                                     const percent = ((item.correct / item.total) * 100).toFixed(0);
                                     return (
@@ -219,7 +181,7 @@ const SkillAssessment = () => {
     }
 
     return (
-        <div className="max-w-3xl mx-auto space-y-8 p-6">
+        <div className="max-w-3xl mx-auto space-y-12 pb-20 pt-10">
             <div className="text-center space-y-4">
                 <h1 className="text-4xl font-bold tracking-tight text-foreground flex items-center justify-center gap-3">
                     <BrainCircuit className="text-primary" size={40} />
@@ -233,71 +195,41 @@ const SkillAssessment = () => {
             <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="bg-card border border-border rounded-2xl p-8 relative overflow-hidden min-h-[400px] flex flex-col justify-center shadow-lg"
+                className="bg-card border border-border rounded-2xl p-8 shadow-2xl relative overflow-hidden min-h-[400px] flex flex-col justify-center"
             >
-                {questions.length === 0 ? (
+                {!quiz ? (
                     <div className="text-center space-y-6">
                         <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
                             <BrainCircuit size={40} className="text-primary" />
                         </div>
-                        <h2 className="text-2xl font-bold text-foreground">Technical Mock Interview</h2>
+                        <h2 className="text-2xl font-bold text-foreground">Ready to test?</h2>
                         <p className="text-muted-foreground max-w-md mx-auto">
-                            Assess your skills with a real-time 10-question evaluation.
-                            Select your role to generate a comprehensive technical session.
+                            Questions are served randomly from various CS topics. We will summarize your skill breakdown at the end.
                         </p>
-
-                        <div className="max-w-xs mx-auto space-y-2 text-left">
-                            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">
-                                Target Role
-                            </label>
-                            <select
-                                value={role}
-                                onChange={(e) => setRole(e.target.value)}
-                                className="w-full p-3 rounded-xl border border-border bg-background text-foreground focus:ring-2 focus:ring-primary outline-none transition-all"
-                            >
-                                {ROLES.map(r => (
-                                    <option key={r} value={r}>{r}</option>
-                                ))}
-                            </select>
-                        </div>
-
                         <button
-                            onClick={fetchQuestions}
+                            onClick={fetchQuestion}
                             disabled={loading}
                             className="px-8 py-4 bg-primary text-primary-foreground rounded-xl font-bold text-lg hover:scale-105 transition-all shadow-lg shadow-primary/25 flex items-center gap-2 mx-auto"
                         >
-                            {loading ? "Preparing Batch..." : "Begin Mock Interview"}
+                            {loading ? "Loading..." : "Begin Integrity Check"}
                             {!loading && <Play size={20} fill="currentColor" />}
                         </button>
                     </div>
                 ) : (
                     <div className="max-w-2xl mx-auto w-full">
-                        <div className="mb-8 flex justify-between items-end">
-                            <div className="space-y-1">
-                                <span className="text-xs font-bold tracking-wider text-primary uppercase bg-primary/10 px-3 py-1 rounded-full">
-                                    Question {currentIndex + 1} of {questions.length}
-                                </span>
-                                <div className="h-1.5 w-48 bg-muted rounded-full overflow-hidden mt-4">
-                                    <div
-                                        className="h-full bg-primary transition-all duration-500"
-                                        style={{ width: `${((currentIndex + 1) / questions.length) * 100}%` }}
-                                    />
-                                </div>
-                            </div>
-                            <div className="text-right">
-                                <span className="text-xs font-medium text-muted-foreground">{role}</span>
-                            </div>
-                        </div>
-
                         <div className="mb-8">
+                            <span className="text-xs font-bold tracking-wider text-primary uppercase bg-primary/10 px-3 py-1 rounded-full">
+                                Question
+                            </span>
                             <h3 className="text-2xl font-bold text-foreground mt-4 leading-relaxed">
-                                {htmlDecode(questions[currentIndex].question)}
+                                {htmlDecode(quiz.question)}
                             </h3>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {questions[currentIndex].options.map((opt, i) => {
-                                const isAnswer = opt === questions[currentIndex].answer;
+                            {quiz.options.map((opt, i) => {
+                                const isSelected = false; // We don't track selection state for UI, just click
+                                const isAnswer = opt === quiz.answer;
                                 let btnClass = "p-4 rounded-xl border border-border text-left font-medium transition-all hover:bg-muted text-foreground";
 
                                 if (answered) {
@@ -307,7 +239,7 @@ const SkillAssessment = () => {
 
                                 return (
                                     <button
-                                        key={`opt-${currentIndex}-${i}`}
+                                        key={i}
                                         onClick={() => handleAnswer(opt)}
                                         disabled={answered}
                                         className={btnClass}
@@ -332,11 +264,16 @@ const SkillAssessment = () => {
                                 className="mt-8 flex justify-end gap-4 border-t border-border pt-6"
                             >
                                 <button
-                                    onClick={handleNext}
-                                    className="px-8 py-3 bg-primary text-primary-foreground rounded-lg font-bold hover:bg-primary/90 transition-colors flex items-center gap-2"
+                                    onClick={() => setIsFinished(true)}
+                                    className="px-6 py-2 text-muted-foreground hover:text-foreground transition-colors font-medium"
                                 >
-                                    {currentIndex < questions.length - 1 ? "Next Question" : "See Final Summary"}
-                                    <Play size={16} fill="currentColor" />
+                                    End & Summarize
+                                </button>
+                                <button
+                                    onClick={fetchQuestion}
+                                    className="px-6 py-2 bg-primary text-primary-foreground rounded-lg font-bold hover:bg-primary/90 transition-colors flex items-center gap-2"
+                                >
+                                    Next Question <Play size={16} fill="currentColor" />
                                 </button>
                             </motion.div>
                         )}

@@ -114,13 +114,27 @@ const Opportunities = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {filteredOpportunities.map((op, index) => (
                         <OpportunityCard
-                            key={op.id || `op-${index}`}
+                            key={op.id}
                             job={op}
                             index={index}
+                            onApply={(job) => setSelectedJob(job)}
                         />
                     ))}
+
+                    {filteredOpportunities.length === 0 && (
+                        <div className="col-span-full text-center py-20 text-muted-foreground">
+                            No opportunities found matching your criteria.
+                        </div>
+                    )}
                 </div>
             )}
+
+            {/* Modals */}
+            <FitScoreModal
+                isOpen={!!selectedJob}
+                onClose={() => setSelectedJob(null)}
+                job={selectedJob}
+            />
         </div>
     );
 };
